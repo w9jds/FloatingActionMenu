@@ -2,9 +2,11 @@
 
 Floating Action Menu Android Library, Built specifically on top of the Design support library `FloatingActionButton`.
 
+![Example Video One](http://i.giphy.com/LeKqjGip2mQ9O.gif)
+
 Currently the library is quite limited, but hopefully it will evolve to much more. To include this library in your project, add jitpack using this:
 
-``` gradle
+```gradle
  repositories {
     jcenter()
     maven { url "https://jitpack.io" }
@@ -13,7 +15,7 @@ Currently the library is quite limited, but hopefully it will evolve to much mor
 
 Now add this into your dependency section in your gradle file.
 
-``` gradle
+```gradle
 compile 'com.github.w9jds:FloatingActionMenu:master-SNAPSHOT'
 ```
 
@@ -31,7 +33,7 @@ item_spacing = spacing between each item in the menu (recommended = 16dp)
 
 Useage should look something like this:
 
-``` xml
+```xml
 <com.w9jds.FloatingActionMenu
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -40,7 +42,7 @@ Useage should look something like this:
     app:base_marginEnd="8dp"
     app:base_marginBottom="8dp"
     app:overlay_color="#66000000"
-    app:item_spacing="8dp">
+    app:item_spacing="16dp">
 
     <android.support.design.widget.FloatingActionButton
         android:id="@+id/scan_item"
