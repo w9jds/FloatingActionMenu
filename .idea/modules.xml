@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/FloatingActionMenu.iml" filepath="$PROJECT_DIR$/FloatingActionMenu.iml" />
+      <module fileurl="file://$PROJECT_DIR$/actionmenu/actionmenu.iml" filepath="$PROJECT_DIR$/actionmenu/actionmenu.iml" />
+    </modules>
+  </component>
+</project>
