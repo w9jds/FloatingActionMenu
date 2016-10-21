@@ -14,7 +14,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Parcelable;
 import android.support.annotation.NonNull;
-import android.support.design.widget.AppBarLayout;
 import android.support.design.widget.FloatingActionButton;
 import android.util.AttributeSet;
 import android.view.Display;
@@ -27,7 +26,6 @@ import android.view.WindowManager;
 import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.AnticipateInterpolator;
 import android.view.animation.OvershootInterpolator;
-import android.widget.Button;
 
 import com.w9jds.floatingactionmenu.R;
 
@@ -351,14 +349,14 @@ public class FloatingActionMenu extends ViewGroup {
             backgroundView.layout(l, 0, r, b);
 
             int buttonsHorizontalCenter = r - l - menuButton.getMeasuredWidth() / 2 - getPaddingRight() - menuMarginEnd;
-            int menuButtonTop = b - t - menuButton.getMeasuredHeight() - getPaddingBottom();
+            int menuButtonTop = b - t - menuButton.getMeasuredHeight() - getPaddingBottom() - menuMarginBottom;
             int menuButtonLeft = buttonsHorizontalCenter - menuButton.getMeasuredWidth() / 2;
 
-            menuButton.layout(menuButtonLeft, menuButtonTop - menuMarginBottom,
+            menuButton.layout(menuButtonLeft, menuButtonTop,
                     menuButtonLeft + menuButton.getMeasuredWidth(),
-                    menuButtonTop + menuButton.getMeasuredHeight() - menuMarginBottom);
+                    menuButtonTop + menuButton.getMeasuredHeight());
 
-            int nextY = menuButtonTop - menuMarginBottom;
+            int nextY = menuButtonTop;
 
             int itemCount = menuItems.size();
             for (int i = 0; i < itemCount; i++) {
@@ -400,7 +398,7 @@ public class FloatingActionMenu extends ViewGroup {
 //                    }
 //                }
 
-                    nextY = childY - buttonSpacing;
+                    nextY = childY;
 
 
                     if (!isAnimating) {
