@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="FloatingActionMenu">
+        <attr name="base_src" format="reference" />
+        <attr name="base_background" format="color" />
+        <attr name="base_ripple" format="color" />
+        <attr name="base_marginEnd" format="dimension" />
+        <attr name="base_marginBottom" format="dimension" />
+        <attr name="overlay_color" format="color" />
+        <attr name="item_spacing" format="dimension" />
+    </declare-styleable>
+</resources>
