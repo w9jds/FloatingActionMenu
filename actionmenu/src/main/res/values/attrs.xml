@@ -8,5 +8,12 @@
         <attr name="base_marginBottom" format="dimension" />
         <attr name="overlay_color" format="color" />
         <attr name="item_spacing" format="dimension" />
+        <attr name="enable_labels" format="boolean" />
+        <attr name="overlay_duration" format="integer" />
+        <attr name="label_background" format="color" />
+        <attr name="label_fontSize" format="float" />
+        <attr name="label_fontColor" format="color" />
+        <attr name="label_marginEnd" format="dimension" />
+        <attr name="actions_duration" format="integer" />
     </declare-styleable>
 </resources>

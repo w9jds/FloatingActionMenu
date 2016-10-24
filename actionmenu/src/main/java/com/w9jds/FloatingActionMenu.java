@@ -7,6 +7,7 @@ import android.animation.TimeInterpolator;
 import android.animation.ValueAnimator;
 import android.annotation.TargetApi;
 import android.content.Context;
+import android.content.res.ColorStateList;
 import android.content.res.TypedArray;
 import android.graphics.Color;
 import android.graphics.Point;
@@ -18,15 +19,20 @@ import android.support.design.widget.FloatingActionButton;
 import android.util.AttributeSet;
 import android.view.Display;
 import android.view.GestureDetector;
+import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewAnimationUtils;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.view.animation.AccelerateDecelerateInterpolator;
+import android.view.animation.AlphaAnimation;
 import android.view.animation.AnticipateInterpolator;
 import android.view.animation.OvershootInterpolator;
+import android.widget.TextView;
 
+import com.w9jds.floatingactionmenu.OnMenuItemClickListener;
+import com.w9jds.floatingactionmenu.OnMenuToggleListener;
 import com.w9jds.floatingactionmenu.R;
 
 import java.util.ArrayList;
@@ -34,14 +40,12 @@ import java.util.List;
 
 public class FloatingActionMenu extends ViewGroup {
 
-    private static final long ANIMATION_DURATION = 300;
-    private static final String TAG = "FloatingActionMenu";
     private static final TimeInterpolator DEFAULT_OPEN_INTERPOLATOR = new OvershootInterpolator();
     private static final TimeInterpolator DEFAULT_CLOSE_INTERPOLATOR = new AnticipateInterpolator();
 
     private FloatingActionButton menuButton;
     private List<FloatingActionButton> menuItems;
-//    private List<Button> menuLabels;
+    private List<View> menuLabels;
     private List<ChildAnimator> itemAnimators;
     private View backgroundView;
 
@@ -50,23 +54,30 @@ public class FloatingActionMenu extends ViewGroup {
     private Animator openOverlay;
     private Animator closeOverlay;
 
-    private OnMenuItemClickListener onMenuItemClickListener;
-    private OnMenuToggleListener onMenuToggleListener;
+    private List<OnMenuItemClickListener> clickListeners;
+    private List<OnMenuToggleListener> openListeners;
 
     private boolean isOpen;
     private boolean isAnimating;
+    private boolean displayLabels;
     private boolean isCloseOnTouchOutside = true;
 
-//    private int childCount;
+    private long actionsDuration;
+
     private int menuButtonBackground;
     private int menuButtonRipple;
     private int menuButtonSrc;
     private int overlayBackground;
     private int buttonSpacing;
     private int maxButtonWidth;
-
+    private int labelBackground;
+    private int labelTextColor;
     private int menuMarginEnd;
     private int menuMarginBottom;
+    private int overlayDuration;
+    private int labelMarginEnd;
+
+    private float labelTextSize;
 
     public FloatingActionMenu(Context context) {
         this(context, null, 0);
@@ -96,18 +107,34 @@ public class FloatingActionMenu extends ViewGroup {
                     .getDimensionPixelSize(R.styleable.FloatingActionMenu_base_marginEnd, 0);
             menuMarginBottom = attributes
                     .getDimensionPixelSize(R.styleable.FloatingActionMenu_base_marginBottom, 0);
+            overlayDuration = attributes
+                    .getInteger(R.styleable.FloatingActionMenu_overlay_duration, 500);
+            actionsDuration = attributes
+                    .getInteger(R.styleable.FloatingActionMenu_actions_duration, 300);
+            labelBackground = attributes
+                    .getResourceId(R.styleable.FloatingActionMenu_label_background, R.drawable.label_background);
+            labelTextColor = attributes
+                    .getColor(R.styleable.FloatingActionMenu_label_fontColor, Color.BLACK);
+            labelTextSize = attributes
+                    .getFloat(R.styleable.FloatingActionMenu_label_fontSize, 12f);
+            displayLabels = attributes
+                    .getBoolean(R.styleable.FloatingActionMenu_enable_labels, true);
+            labelMarginEnd = attributes
+                    .getDimensionPixelSize(R.styleable.FloatingActionMenu_label_marginEnd, 0);
         }
         finally {
             attributes.recycle();
         }
 
         menuItems = new ArrayList<>();
+        menuLabels = new ArrayList<>();
         itemAnimators = new ArrayList<>();
-//        menuLabels = new ArrayList<>();
+        clickListeners = new ArrayList<>();
+        openListeners = new ArrayList<>();
 
         menuButton = new FloatingActionButton(getContext());
         menuButton.setSize(FloatingActionButton.SIZE_AUTO);
-//        menuButton.setBackgroundTintList(menuButtonBackground);
+        menuButton.setBackgroundTintList(ColorStateList.valueOf(menuButtonBackground));
         menuButton.setRippleColor(menuButtonRipple);
         menuButton.setImageResource(menuButtonSrc);
         menuButton.setOnClickListener(v -> toggle());
@@ -137,7 +164,7 @@ public class FloatingActionMenu extends ViewGroup {
 
     @Override
     protected void onFinishInflate() {
-        bringChildToFront(backgroundView);
+//        bringChildToFront(backgroundView);
         bringChildToFront(menuButton);
         super.onFinishInflate();
     }
@@ -153,15 +180,30 @@ public class FloatingActionMenu extends ViewGroup {
 
     public void addMenuItem(FloatingActionButton item) {
         menuItems.add(item);
-        itemAnimators.add(new ChildAnimator(item));
-//        AppCompatButton button = new AppCompatButton(getContext());
-//        button.setText(item.getContentDescription());
-//        addView(button);
-//        menuLabels.add(button);
-//        item.setTag(button);
 
+        if (displayLabels) {
+            buildLabelButton(item);
+        }
+
+        itemAnimators.add(new ChildAnimator(item));
         item.setOnClickListener(onItemClickListener);
-//        button.setOnClickListener(onItemClickListener);
+    }
+
+    private void buildLabelButton(FloatingActionButton item) {
+        View label = LayoutInflater.from(getContext()).inflate(R.layout.label_layout, null);
+        label.setBackgroundResource(labelBackground);
+
+        TextView textView = (TextView) label.findViewById(R.id.label_text);
+        textView.setText(item.getContentDescription());
+        textView.setTextColor(labelTextColor);
+        textView.setTextSize(labelTextSize);
+
+        addView(label);
+
+        menuLabels.add(label);
+        item.setTag(label);
+
+        label.setOnClickListener(onItemClickListener);
     }
 
     public void toggle() {
@@ -175,21 +217,35 @@ public class FloatingActionMenu extends ViewGroup {
     public void open() {
         startOpenAnimator();
         isOpen = true;
-        if (onMenuToggleListener != null) {
-            onMenuToggleListener.onMenuToggle(true);
-        }
+
+        triggerOpenListeners(true);
     }
 
     public void close() {
         startCloseAnimator();
         isOpen = false;
-        if (onMenuToggleListener != null) {
-            onMenuToggleListener.onMenuToggle(false);
+
+        triggerOpenListeners(false);
+    }
+
+    private void triggerOpenListeners(boolean state) {
+        if (openListeners.size() > 0) {
+            for (OnMenuToggleListener listener : openListeners) {
+                listener.onMenuToggle(state);
+            }
+        }
+    }
+
+    private void triggerClickListeners(int index, FloatingActionButton button) {
+        if (clickListeners.size() > 0) {
+            for (OnMenuItemClickListener listener : clickListeners) {
+                listener.onMenuItemClick(this, index, button);
+            }
         }
     }
 
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
-    private void createOverlayAnimations() {
+    private void createOverlayRipple() {
         WindowManager manager = (WindowManager) getContext().getSystemService(Context.WINDOW_SERVICE);
         Display display = manager.getDefaultDisplay();
         Point size = new Point();
@@ -200,7 +256,7 @@ public class FloatingActionMenu extends ViewGroup {
         closeOverlay = ViewAnimationUtils.createCircularReveal(backgroundView,
                 menuButton.getLeft() + radius, menuButton.getTop() + radius, Math.max(size.x, size.y),
                 radius);
-        closeOverlay.setDuration(500);
+        closeOverlay.setDuration(overlayDuration);
         closeOverlay.setInterpolator(new AccelerateDecelerateInterpolator());
         closeOverlay.addListener(new Animator.AnimatorListener() {
             @Override
@@ -228,7 +284,7 @@ public class FloatingActionMenu extends ViewGroup {
         openOverlay = ViewAnimationUtils.createCircularReveal(backgroundView,
                 menuButton.getLeft() + radius, menuButton.getTop() + radius, radius,
                 Math.max(size.x, size.y));
-        openOverlay.setDuration(500);
+        openOverlay.setDuration(overlayDuration);
         openOverlay.setInterpolator(new AccelerateDecelerateInterpolator());
         openOverlay.addListener(new Animator.AnimatorListener() {
             @Override
@@ -254,10 +310,6 @@ public class FloatingActionMenu extends ViewGroup {
     }
 
     protected void startCloseAnimator() {
-        if (closeOverlay == null) {
-            createOverlayAnimations();
-        }
-
         closeSet.start();
         closeOverlay.start();
         for (ChildAnimator anim : itemAnimators) {
@@ -266,8 +318,7 @@ public class FloatingActionMenu extends ViewGroup {
     }
 
     protected void startOpenAnimator() {
-        createOverlayAnimations();
-
+        createOverlayRipple();
         openOverlay.start();
         openSet.start();
         for (ChildAnimator anim : itemAnimators) {
@@ -293,9 +344,11 @@ public class FloatingActionMenu extends ViewGroup {
 
         for (int i = 0; i < menuItems.size(); i++) {
             FloatingActionButton fab = menuItems.get(i);
-//            Button label = menuLabels.get(i);
-//            maxButtonWidth = Math.max(maxButtonWidth, label.getMeasuredWidth() + fab.getMeasuredWidth()
-//                    + fab.getPaddingEnd() + fab.getPaddingStart());
+            if (menuLabels.size() > 0) {
+                View label = menuLabels.get(i);
+                maxButtonWidth = Math.max(maxButtonWidth, label.getMeasuredWidth() + fab.getMeasuredWidth()
+                        + fab.getPaddingEnd() + fab.getPaddingStart());
+            }
         }
 
         maxButtonWidth = Math.max(menuButton.getMeasuredWidth(), maxButtonWidth);
@@ -324,13 +377,13 @@ public class FloatingActionMenu extends ViewGroup {
     @Override
     public boolean onTouchEvent(@NonNull MotionEvent event) {
         if (isCloseOnTouchOutside) {
-            return mGestureDetector.onTouchEvent(event);
+            return gestureDetector.onTouchEvent(event);
         } else {
             return super.onTouchEvent(event);
         }
     }
 
-    GestureDetector mGestureDetector = new GestureDetector(getContext(), new GestureDetector.SimpleOnGestureListener() {
+    GestureDetector gestureDetector = new GestureDetector(getContext(), new GestureDetector.SimpleOnGestureListener() {
         @Override
         public boolean onDown(MotionEvent e) {
             return isCloseOnTouchOutside && isOpened();
@@ -369,34 +422,21 @@ public class FloatingActionMenu extends ViewGroup {
 
                     item.layout(childX, childY, childX + item.getMeasuredWidth(), childY + item.getMeasuredHeight());
 
-//                View label = (View) fab.getTag(R.id.fab_label);
-//                if (label != null) {
-//                    int labelsOffset = (mUsingMenuLabel ? mMaxButtonWidth / 2 : fab.getMeasuredWidth() / 2) + mLabelsMargin;
-//                    int labelXNearButton = mLabelsPosition == LABELS_POSITION_LEFT
-//                            ? buttonsHorizontalCenter - labelsOffset
-//                            : buttonsHorizontalCenter + labelsOffset;
-//
-//                    int labelXAwayFromButton = mLabelsPosition == LABELS_POSITION_LEFT
-//                            ? labelXNearButton - label.getMeasuredWidth()
-//                            : labelXNearButton + label.getMeasuredWidth();
-//
-//                    int labelLeft = mLabelsPosition == LABELS_POSITION_LEFT
-//                            ? labelXAwayFromButton
-//                            : labelXNearButton;
-//
-//                    int labelRight = mLabelsPosition == LABELS_POSITION_LEFT
-//                            ? labelXNearButton
-//                            : labelXAwayFromButton;
-//
-//                    int labelTop = childY - mLabelsVerticalOffset + (fab.getMeasuredHeight()
-//                            - label.getMeasuredHeight()) / 2;
-//
-//                    label.layout(labelLeft, labelTop, labelRight, labelTop + label.getMeasuredHeight());
-//
-//                    if (!mIsMenuOpening) {
-//                        label.setVisibility(INVISIBLE);
-//                    }
-//                }
+                    View label = (View) item.getTag();
+                    if (label != null) {
+                        int labelsOffset = item.getMeasuredWidth() / 2 + labelMarginEnd;
+                        int labelXEnd = buttonsHorizontalCenter - labelsOffset;
+                        int labelXStart = labelXEnd - label.getMeasuredWidth();
+                        int labelTop = childY + (item.getMeasuredHeight() - label.getMeasuredHeight()) / 2;
+
+                        label.layout(labelXStart, labelTop, labelXEnd, labelTop + label.getMeasuredHeight());
+
+                        if (!isAnimating) {
+                            if (!isOpen) {
+                                label.setVisibility(INVISIBLE);
+                            }
+                        }
+                    }
 
                     nextY = childY;
 
@@ -404,14 +444,8 @@ public class FloatingActionMenu extends ViewGroup {
                     if (!isAnimating) {
                         if (!isOpen) {
                             item.setTranslationY(menuButton.getTop() - item.getTop());
-                            item.setVisibility(GONE);
-//                        label.setVisibility(GONE);
-                            backgroundView.setVisibility(GONE);
-                        } else {
-                            item.setTranslationY(0);
-                            item.setVisibility(VISIBLE);
-//                        label.setVisibility(VISIBLE);
-                            backgroundView.setVisibility(VISIBLE);
+                            item.setVisibility(INVISIBLE);
+                            backgroundView.setVisibility(INVISIBLE);
                         }
                     }
                 }
@@ -477,8 +511,8 @@ public class FloatingActionMenu extends ViewGroup {
         openSet.setInterpolator(DEFAULT_OPEN_INTERPOLATOR);
         closeSet.setInterpolator(DEFAULT_CLOSE_INTERPOLATOR);
 
-        openSet.setDuration(ANIMATION_DURATION);
-        closeSet.setDuration(ANIMATION_DURATION);
+        openSet.setDuration(actionsDuration);
+        closeSet.setDuration(actionsDuration);
 
         openSet.addListener(listener);
         closeSet.addListener(listener);
@@ -507,24 +541,9 @@ public class FloatingActionMenu extends ViewGroup {
         super.onRestoreInstanceState(state);
     }
 
-//    @Override
-//    protected void onDetachedFromWindow() {
-//        super.onDetachedFromWindow();
-//    }
-
-
-//    @Override
-//    public void setBackground(Drawable background) {
-//        if (background instanceof ColorDrawable) {
-//            super.setBackground(background);
-//        } else {
-//            throw new IllegalArgumentException("floating only support color background");
-//        }
-//    }
-
     private OnClickListener onItemClickListener = new OnClickListener() {
         @Override
-        public void onClick(View v) {
+        public void onClick(View view) {
             closeSet.addListener(new Animator.AnimatorListener() {
                 @Override
                 public void onAnimationStart(Animator animator) {
@@ -534,18 +553,14 @@ public class FloatingActionMenu extends ViewGroup {
                 @Override
                 public void onAnimationEnd(Animator animator) {
                     closeSet.removeListener(this);
-                    if (v instanceof FloatingActionButton) {
-                        int i = menuItems.indexOf(v);
-                        if (onMenuItemClickListener != null) {
-                            onMenuItemClickListener.onMenuItemClick(FloatingActionMenu.this, i, (FloatingActionButton) v);
-                        }
+                    if (view instanceof FloatingActionButton) {
+                        int i = menuItems.indexOf(view);
+                        triggerClickListeners(i, (FloatingActionButton)view);
                     }
-//                    else if (v instanceof Button) {
-//                        int i = menuLabels.indexOf(v);
-//                        if (onMenuItemClickListener != null) {
-//                            onMenuItemClickListener.onMenuItemClick(FloatingActionMenu.this, i, menuItems.get(i));
-//                        }
-//                    }
+                    else if (view != backgroundView) {
+                        int i = menuLabels.indexOf(view);
+                        triggerClickListeners(i, menuItems.get(i));
+                    }
                 }
 
                 @Override
@@ -558,23 +573,35 @@ public class FloatingActionMenu extends ViewGroup {
 
                 }
             });
+
             close();
         }
     };
 
     class ChildAnimator implements Animator.AnimatorListener {
         private View view;
+        private View label;
+        private AlphaAnimation openAnimation;
+        private AlphaAnimation closeAnimation;
         private boolean playingOpenAnimator;
 
-        ChildAnimator(View v) {
-            v.animate().setListener(this);
-            view = v;
+        ChildAnimator(View view) {
+            view.animate().setListener(this);
+            if (displayLabels) {
+                label = (View) view.getTag();
+                openAnimation = new AlphaAnimation(0f, 1f);
+                openAnimation.setDuration(250);
+
+                closeAnimation = new AlphaAnimation(1f, 0f);
+                closeAnimation.setDuration(250);
+            }
+            this.view = view;
         }
 
         void startOpenAnimator() {
-            view.animate()
-                .cancel();
+            view.animate().cancel();
             playingOpenAnimator = true;
+
             view.animate()
                 .translationY(0)
                 .setInterpolator(DEFAULT_OPEN_INTERPOLATOR)
@@ -582,9 +609,12 @@ public class FloatingActionMenu extends ViewGroup {
         }
 
         void startCloseAnimator() {
-            view.animate()
-                .cancel();
+            view.animate().cancel();
             playingOpenAnimator = false;
+
+            if (displayLabels) {
+                label.startAnimation(closeAnimation);
+            }
             view.animate()
                 .translationY((menuButton.getTop() - view.getTop()))
                 .setInterpolator(DEFAULT_CLOSE_INTERPOLATOR)
@@ -597,7 +627,9 @@ public class FloatingActionMenu extends ViewGroup {
                 view.setVisibility(VISIBLE);
             }
             else {
-//                ((Button) view.getTag()).setVisibility(GONE);
+                if (displayLabels) {
+                    label.setVisibility(GONE);
+                }
             }
         }
 
@@ -607,7 +639,10 @@ public class FloatingActionMenu extends ViewGroup {
                 view.setVisibility(GONE);
             }
             else {
-//                ((Button) view.getTag()).setVisibility(VISIBLE);
+                if (displayLabels) {
+                    label.setVisibility(VISIBLE);
+                    label.startAnimation(openAnimation);
+                }
             }
         }
 
@@ -622,19 +657,19 @@ public class FloatingActionMenu extends ViewGroup {
         }
     }
 
-//    public OnMenuToggleListener getOnMenuToggleListener() {
-//        return onMenuToggleListener;
-//    }
-//
-//    public void setOnMenuToggleListener(OnMenuToggleListener onMenuToggleListener) {
-//        this.onMenuToggleListener = onMenuToggleListener;
-//    }
-//
-//    public OnMenuItemClickListener getOnMenuItemClickListener() {
-//        return onMenuItemClickListener;
-//    }
-//
-//    public void setOnMenuItemClickListener(OnMenuItemClickListener onMenuItemClickListener) {
-//        this.onMenuItemClickListener = onMenuItemClickListener;
-//    }
+    public void addOnMenuItemClickListener(OnMenuItemClickListener listener) {
+        this.clickListeners.add(listener);
+    }
+
+    public void addOnMenuToggleListner(OnMenuToggleListener listener) {
+        this.openListeners.add(listener);
+    }
+
+    public boolean removeOnMenuItemClickListener(OnMenuItemClickListener listener) {
+        return this.clickListeners.remove(listener);
+    }
+
+    public boolean removeOnMenuToggleListener(OnMenuToggleListener listener) {
+        return this.openListeners.remove(listener);
+    }
 }

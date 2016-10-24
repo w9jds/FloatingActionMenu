@@ -2,7 +2,7 @@
 
 Floating Action Menu Android Library, Built specifically on top of the Design support library `FloatingActionButton`.
 
-![Example Video One](http://i.giphy.com/LeKqjGip2mQ9O.gif)
+![Example Video One](http://i.giphy.com/ZEOpMWjzvBGhi.gif)
 
 Currently the library is quite limited, but hopefully it will evolve to much more. To include this library in your project, add jitpack using this:
 
@@ -25,16 +25,24 @@ Using the library is extremely easy. There is only one element inside of the lib
 base_src = reference to drawable used on main FAB (default is + sign)
 base_background = color to use on main FAB
 base_ripple = color to use as ripple on main FAB
-base_marginEnd = margin to use on the end of the entire menu (recommended = 8dp)
-base_marginBottom = margin to use on the bottom of the menu (recommended = 8dp)
+base_marginEnd = margin to use on the end of the entire menu
+base_marginBottom = margin to use on the bottom of the menu
 overlay_color = color used on the overlay displayed when the menu is open
-item_spacing = spacing between each item in the menu (recommended = 16dp)
+item_spacing = spacing between each item in the menu
+enable_labels = default is true
+overlay_duration = duration the overlay ripple takes to run to completion (default = 500)
+label_background = drawable id of the background for the labels
+label_fontSize = font size you want to use for your labels
+label_fontColor = font color you want to use for your labels (default = black)
+label_marginEnd = space between the end of the label and the action button it belongs to
+actions_duration = duration of the actions opening (default = 300)
 ```
 
 Useage should look something like this:
 
 ```xml
 <com.w9jds.FloatingActionMenu
+    android:id="@+id/action_menu"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     app:base_src="@drawable/ic_positive"
@@ -42,7 +50,8 @@ Useage should look something like this:
     app:base_marginEnd="8dp"
     app:base_marginBottom="8dp"
     app:overlay_color="#66000000"
-    app:item_spacing="16dp">
+    app:item_spacing="16dp"
+    app:label_marginEnd="8dp">
 
     <android.support.design.widget.FloatingActionButton
         android:id="@+id/scan_item"
@@ -62,3 +71,5 @@ Useage should look something like this:
 
 </com.w9jds.FloatingActionMenu>
 ```
+
+NOTE: You can attach click listeners to the action buttons directly. However, I highly recommend using the `addOnMenuItemClickListener` instead, due to the view handling closing the menu for you before firing your action.
