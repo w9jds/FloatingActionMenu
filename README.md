@@ -16,7 +16,7 @@ Currently the library is quite limited, but hopefully it will evolve to much mor
 Now add this into your dependency section in your gradle file.
 
 ```gradle
-compile 'com.github.w9jds:FloatingActionMenu:master-SNAPSHOT'
+compile 'com.github.w9jds:FloatingActionMenu:v0.1.0-alpha'
 ```
 
 Using the library is extremely easy. There is only one element inside of the library, which you then place all of you buttons inside. The following are all of the custom attributes for the element, and what they do:
